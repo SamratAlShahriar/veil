@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
+import 'package:veil/veil.dart';
 
 import 'veil_notifier.dart';
 
@@ -16,7 +18,7 @@ import 'veil_notifier.dart';
 ///    opacity via an [OpacityLayer].
 /// 3. **Unveiled overdraw** — each [RenderRepaintBoundary] registered in
 ///    [notifier] is re-painted on top of both layers, unfiltered and undimmed,
-///    clipped to its own bounds via [pushClipRect].
+///    clipped to its own bounds via `pushClipRect`.
 ///
 /// ### Why `pushColorFilter` / `pushOpacity` / `pushClipRect`?
 ///
@@ -25,7 +27,7 @@ import 'veil_notifier.dart';
 /// composited mid-paint — Flutter's `_compositeChild` finalises the current
 /// `Picture` and disposes the underlying native canvas, invalidating any
 /// local `canvas` reference. Flutter's compositing primitives always supply
-/// a fresh, valid [PaintingContext] into their callbacks and are immune to
+/// a fresh, valid `PaintingContext` into their callbacks and are immune to
 /// this race condition.
 ///
 /// ### Why `isRepaintBoundary` is always `true`

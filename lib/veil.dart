@@ -32,5 +32,7 @@
 /// ```
 library veil;
 
+import 'package:veil/veil.dart';
+
 export 'src/unveiled.dart' show Unveiled;
 export 'src/veil.dart' show Veil;

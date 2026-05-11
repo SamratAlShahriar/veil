@@ -144,7 +144,8 @@ void main() {
       expect(find.text('three'), findsOneWidget);
     });
 
-    testWidgets('Unveiled unregisters on dispose without error', (tester) async {
+    testWidgets('Unveiled unregisters on dispose without error',
+        (tester) async {
       bool show = true;
       await tester.pumpWidget(
         Directionality(
@@ -153,7 +154,7 @@ void main() {
             builder: (_, setState) => Veil(
               child: Column(
                 children: [
-                  if (show) Unveiled(child: const Text('removable')),
+                  if (show) const Unveiled(child: Text('removable')),
                   GestureDetector(
                     onTap: () => setState(() => show = false),
                     child: const Text('remove'),

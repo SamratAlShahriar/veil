@@ -1,22 +1,22 @@
 // ignore_for_file: deprecated_member_use
-import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:veil/src/render_veil.dart';
+import 'package:veil/src/veil_notifier.dart';
+import 'package:veil/src/veil_scope.dart';
 
-import 'render_veil.dart';
-import 'veil_notifier.dart';
-import 'veil_scope.dart';
 
 /// Applies an animated greyscale and optional colour overlay effect to [child].
 ///
-/// Any descendant wrapped in [Unveiled] remains full-colour and is unaffected
+/// Any descendant wrapped in `Unveiled` remains full-colour and is unaffected
 /// by the overlay — even while the effect is animating.
 ///
 /// ### How it works
 ///
-/// Internally uses [RenderVeil] — a custom [RenderObject] that:
+/// Internally uses `RenderVeil` — a custom [RenderObject] that:
 /// 1. Paints the entire subtree through a `ColorFilterLayer` (greyscale).
 /// 2. Paints an `OpacityLayer` tinted with [overlayColor] on top.
-/// 3. Re-paints each [Unveiled] child on top of both layers — unfiltered
+/// 3. Re-paints each `Unveiled` child on top of both layers — unfiltered
 ///    and undimmed — using its cached [RenderRepaintBoundary].
 ///
 /// All compositing uses Flutter's own primitives (`pushColorFilter`,
@@ -101,7 +101,7 @@ class Veil extends StatefulWidget {
   ///
   /// `0.0` = no overlay (default), `1.0` = fully opaque.
   ///
-  /// The overlay colour is set via [overlayColor]. [Unveiled] children are
+  /// The overlay colour is set via [overlayColor]. `Unveiled` children are
   /// **not** affected by the overlay.
   final double overlayOpacity;
 
@@ -185,7 +185,7 @@ class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
   }
 
   /// Strips the alpha from [color] so overlay transparency is driven solely
-  /// by [overlayOpacity], keeping both concerns orthogonal.
+  /// by `overlayOpacity`, keeping both concerns orthogonal.
   static Color _toOpaque(Color color) => color.withAlpha(255);
 
   @override
@@ -211,7 +211,7 @@ class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL: _VeilRenderObjectWidget
 //
-// Bridges the widget tree and [RenderVeil]. Passes updated properties to the
+// Bridges the widget tree and `RenderVeil`. Passes updated properties to the
 // render object via [updateRenderObject] without triggering a widget rebuild.
 // ─────────────────────────────────────────────────────────────────────────────
 

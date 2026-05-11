@@ -1,5 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import 'package:veil/src/render_veil.dart';
+import 'package:veil/veil.dart';
 
 import 'veil_notifier.dart';
 import 'veil_scope.dart';

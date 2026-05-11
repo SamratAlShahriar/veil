@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:veil/veil.dart';
 
 import 'veil_notifier.dart';
 
@@ -11,7 +12,7 @@ import 'veil_notifier.dart';
 /// rare in practice.
 class VeilScope extends InheritedWidget {
   /// Creates a [VeilScope].
-  const VeilScope({
+  const VeilScope({super.key, 
     required this.notifier,
     required super.child,
   });

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:veil/veil.dart';
 
+/// Entry point for the veil example app.
 void main() => runApp(const ExampleApp());
 
+/// Root application widget for the veil example.
 class ExampleApp extends StatelessWidget {
+  /// Creates an [ExampleApp].
   const ExampleApp({super.key});
 
   @override
@@ -16,9 +19,9 @@ class ExampleApp extends StatelessWidget {
   }
 }
 
-
-
+/// Interactive demo page for the veil package.
 class ExamplePage extends StatefulWidget {
+  /// Creates an [ExamplePage].
   const ExamplePage({super.key});
 
   @override
