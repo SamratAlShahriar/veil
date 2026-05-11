@@ -5,7 +5,6 @@ import 'package:veil/src/render_veil.dart';
 import 'package:veil/src/veil_notifier.dart';
 import 'package:veil/src/veil_scope.dart';
 
-
 /// Applies an animated greyscale and optional colour overlay effect to [child].
 ///
 /// Any descendant wrapped in `Unveiled` remains full-colour and is unaffected

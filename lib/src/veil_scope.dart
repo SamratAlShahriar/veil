@@ -12,7 +12,8 @@ import 'veil_notifier.dart';
 /// rare in practice.
 class VeilScope extends InheritedWidget {
   /// Creates a [VeilScope].
-  const VeilScope({super.key, 
+  const VeilScope({
+    super.key,
     required this.notifier,
     required super.child,
   });
