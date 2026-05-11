@@ -7,8 +7,7 @@
       "name": "veil",
       "version": "1.0.0",
       "dependencies": [
-        "flutter",
-        "meta"
+        "flutter"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -17,7 +16,7 @@
     },
     {
       "name": "flutter_lints",
-      "version": "3.0.2",
+      "version": "6.0.0",
       "dependencies": [
         "lints"
       ]
@@ -41,11 +40,6 @@
       ]
     },
     {
-      "name": "meta",
-      "version": "1.17.0",
-      "dependencies": []
-    },
-    {
       "name": "flutter",
       "version": "0.0.0",
       "dependencies": [
@@ -59,7 +53,7 @@
     },
     {
       "name": "lints",
-      "version": "3.0.0",
+      "version": "6.1.0",
       "dependencies": []
     },
     {
@@ -68,6 +62,11 @@
       "dependencies": [
         "async"
       ]
+    },
+    {
+      "name": "meta",
+      "version": "1.17.0",
+      "dependencies": []
     },
     {
       "name": "collection",

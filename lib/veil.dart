@@ -30,7 +30,7 @@
 ///   ),
 /// )
 /// ```
-library veil;
+library;
 
 import 'package:veil/veil.dart';
 

@@ -2,8 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
-import 'unveiled.dart';
-import 'veil.dart';
+import 'package:veil/veil.dart';
 
 /// Tracks the set of [RenderRepaintBoundary] objects belonging to [Unveiled]
 /// descendants of a single [Veil] widget.
