@@ -18,3 +18,6 @@ example/.dart_tool/
 
 # Coverage
 coverage/
+
+# Example lockfile
+example/pubspec.lock
