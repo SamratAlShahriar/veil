@@ -1,0 +1,20 @@
+# .pubignore — files excluded from pub.dev published package
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Dart tool
+.dart_tool/
+example/.dart_tool/
+
+# CI
+.github/
+
+# Coverage
+coverage/
