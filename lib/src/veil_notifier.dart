@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -9,6 +10,7 @@ import 'package:flutter/widgets.dart';
 /// Notifications are batched via a microtask so that N [Unveiled] widgets
 /// mounting in the same frame trigger only one [markNeedsPaint] call instead
 /// of N separate repaints.
+@internal
 class VeilNotifier extends ChangeNotifier {
   /// The live set of opted-out repaint boundaries.
   final Set<RenderRepaintBoundary> boundaries = {};

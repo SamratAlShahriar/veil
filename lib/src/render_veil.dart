@@ -55,17 +55,49 @@ class RenderVeil extends RenderProxyBox {
   // perceptually accurate greyscale matching the sRGB colour space.
 
   static const List<double> _kGreyMatrix = [
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0,      0,      0,      1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   static const List<double> _kIdentityMatrix = [
-    1, 0, 0, 0, 0,
-    0, 1, 0, 0, 0,
-    0, 0, 1, 0, 0,
-    0, 0, 0, 1, 0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   // ── Precision thresholds ──────────────────────────────────────────────────
@@ -173,7 +205,8 @@ class RenderVeil extends RenderProxyBox {
   /// [overlayAmount] is changing (e.g. overlay-only animation).
   ColorFilter? _getColorFilter(double t) {
     if (t <= _kEffectivelyZero) return null;
-    if (t == _cachedColorFilterAmount && _cachedColorFilter != null) {
+    if (_cachedColorFilter != null &&
+        (t - _cachedColorFilterAmount).abs() < 0.0001) {
       return _cachedColorFilter;
     }
     final matrix = t >= _kEffectivelyOne ? _kGreyMatrix : _lerpMatrix(t);
@@ -231,8 +264,9 @@ class RenderVeil extends RenderProxyBox {
       context.pushOpacity(
         offset,
         alpha,
-        (innerContext, innerOffset) =>
-            innerContext.canvas.drawRect(innerOffset & size, _overlayPaint),
+        (innerContext, innerOffset) => innerContext.canvas.drawRect(
+            (innerOffset & size).intersect(innerContext.estimatedBounds),
+            _overlayPaint),
       );
     }
 
@@ -265,5 +299,14 @@ class RenderVeil extends RenderProxyBox {
             innerContext.paintChild(boundary, innerOffset),
       );
     }
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DoubleProperty('greyAmount', greyAmount));
+    properties.add(DoubleProperty('overlayAmount', overlayAmount));
+    properties.add(ColorProperty('overlayColor', overlayColor));
+    properties.add(IntProperty('unveiledCount', notifier.boundaries.length));
   }
 }

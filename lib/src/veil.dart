@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'render_veil.dart';
@@ -124,6 +125,17 @@ class Veil extends StatefulWidget {
 
   @override
   State<Veil> createState() => _VeilState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<bool>('enable', enable));
+    properties.add(DoubleProperty('greyOpacity', greyOpacity));
+    properties.add(DoubleProperty('overlayOpacity', overlayOpacity));
+    properties.add(ColorProperty('overlayColor', overlayColor));
+    properties.add(DiagnosticsProperty<Duration>('duration', duration));
+    properties.add(DiagnosticsProperty<Curve>('curve', curve));
+  }
 }
 
 class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
