@@ -7,7 +7,8 @@
       "name": "veil",
       "version": "1.0.0",
       "dependencies": [
-        "flutter"
+        "flutter",
+        "meta"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -40,6 +41,11 @@
       ]
     },
     {
+      "name": "meta",
+      "version": "1.17.0",
+      "dependencies": []
+    },
+    {
       "name": "flutter",
       "version": "0.0.0",
       "dependencies": [
@@ -62,11 +68,6 @@
       "dependencies": [
         "async"
       ]
-    },
-    {
-      "name": "meta",
-      "version": "1.17.0",
-      "dependencies": []
     },
     {
       "name": "collection",
