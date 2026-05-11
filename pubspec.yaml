@@ -1,0 +1,29 @@
+name: veil
+description: >
+  Selectively apply animated visual effects (greyscale, colour overlay) to a
+  Flutter widget subtree, with per-child opt-out via Unveiled. Crash-safe,
+  zero per-frame GC allocation, and assertion-safe.
+version: 1.0.0
+homepage: https://github.com/SamratAlShahriar/veil
+repository: https://github.com/SamratAlShahriar/veil
+issue_tracker: https://github.com/SamratAlShahriar/veil/issues
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+topics:
+  - ui
+  - animation
+  - filter
+  - effects
+  - widget
