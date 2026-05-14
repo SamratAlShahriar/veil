@@ -1,9 +1,8 @@
 name: veil
-description: >
-  Selectively apply animated visual effects (greyscale, colour overlay) to a
-  Flutter widget subtree, with per-child opt-out via Unveiled. Crash-safe,
-  zero per-frame GC allocation, and assertion-safe.
-version: 1.0.0
+description: >-
+  Selectively apply animated visual effects to a Flutter widget subtree,
+  with per-child colour opt-out via Unveiled. Crash-safe and performance-optimised.
+version: 1.0.1
 homepage: https://github.com/SamratAlShahriar/veil
 repository: https://github.com/SamratAlShahriar/veil
 issue_tracker: https://github.com/SamratAlShahriar/veil/issues

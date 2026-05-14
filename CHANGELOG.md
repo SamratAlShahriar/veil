@@ -1,3 +1,7 @@
+## 1.0.1
+
+* Fix: shorten pubspec description to meet pub.dev 180 character limit
+
 ## 1.0.0
 
 * Initial release
