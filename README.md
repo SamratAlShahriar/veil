@@ -3,6 +3,9 @@
 Selectively apply animated visual effects to a Flutter widget subtree, with per-child opt-out via `Unveiled`.
 
 [![pub package](https://img.shields.io/pub/v/veil.svg)](https://pub.dev/packages/veil)
+[![pub points](https://img.shields.io/pub/points/veil)](https://pub.dev/packages/veil/score)
+[![popularity](https://img.shields.io/pub/popularity/veil)](https://pub.dev/packages/veil/score)
+[![likes](https://img.shields.io/pub/likes/veil)](https://pub.dev/packages/veil/score)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -164,4 +167,4 @@ All compositing uses Flutter's own layer primitives rather than raw `canvas.save
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+This package is released under the [MIT License](LICENSE).
