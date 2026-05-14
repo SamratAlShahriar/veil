@@ -19,7 +19,21 @@ example/.dart_tool/
 # Coverage
 coverage/
 
-# Example lockfile
-example/pubspec.lock
+# Build outputs
 build/
+
+# Screenshots — used in README, not needed in package
 screenshots/
+
+# Example platform folders — not needed in published package
+example/android/
+example/ios/
+example/macos/
+example/linux/
+example/windows/
+example/web/
+
+# Example generated files
+example/pubspec.lock
+example/README.md
+example/analysis_options.yaml
