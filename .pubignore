@@ -21,3 +21,4 @@ coverage/
 
 # Example lockfile
 example/pubspec.lock
+build/
