@@ -7,6 +7,10 @@ Selectively apply animated visual effects to a Flutter widget subtree, with per-
 
 ---
 
+## Preview
+
+![veil demo](https://raw.githubusercontent.com/SamratAlShahriar/veil/main/screenshots/demo.gif)
+
 ## Features
 
 - **Animated greyscale** — smooth toggle with configurable duration and curve
