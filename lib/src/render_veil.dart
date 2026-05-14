@@ -278,8 +278,9 @@ class RenderVeil extends RenderProxyBox {
 
       // Guard 2: its engine layer must be live.
       final boundaryLayer = boundary.layer;
-      if (boundaryLayer == null || !boundaryLayer.attached)
+      if (boundaryLayer == null || !boundaryLayer.attached) {
         continue; // coverage:ignore-line
+      }
 
       // Compute boundary position in our local coordinate space.
       final transform = boundary.getTransformTo(this);
