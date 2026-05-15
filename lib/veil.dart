@@ -36,5 +36,6 @@
 library;
 
 export 'src/unveiled.dart' show Unveiled;
-export 'src/unveiled_blur_mode.dart' show UnveiledBlurMode, UnveiledBlurCustomMode;
+export 'src/unveiled_blur_mode.dart'
+    show UnveiledBlurMode, UnveiledBlurCustomMode;
 export 'src/veil.dart' show Veil;

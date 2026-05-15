@@ -55,17 +55,49 @@ class RenderVeil extends RenderProxyBox {
   // ── BT.709 luminance colour matrices ─────────────────────────────────────
 
   static const List<double> _kGreyMatrix = [
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0,      0,      0,      1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   static const List<double> _kIdentityMatrix = [
-    1, 0, 0, 0, 0,
-    0, 1, 0, 0, 0,
-    0, 0, 1, 0, 0,
-    0, 0, 0, 1, 0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   // ── Precision thresholds ──────────────────────────────────────────────────
@@ -94,7 +126,8 @@ class RenderVeil extends RenderProxyBox {
   double _cachedBlurAmount = -1;
 
   /// Cached overlay [Paint] — rebuilt only when [overlayColor] changes.
-  late Paint _overlayPaint = Paint()..color = _overlayColor; // coverage:ignore-line
+  late Paint _overlayPaint = Paint()
+    ..color = _overlayColor; // coverage:ignore-line
 
   // ── greyAmount ────────────────────────────────────────────────────────────
 
@@ -302,12 +335,14 @@ class RenderVeil extends RenderProxyBox {
       // Guard 3: skip if drifted outside our bounds.
       if (!myBounds.overlaps(boundaryRect)) continue; // coverage:ignore-line
 
-      context.pushClipRect( // coverage:ignore-line
+      context.pushClipRect(
+        // coverage:ignore-line
         needsCompositing, // coverage:ignore-line
         boundaryOffset, // coverage:ignore-line
         Offset.zero & boundary.size, // coverage:ignore-line
         (innerContext, innerOffset) => // coverage:ignore-line
-            innerContext.paintChild(boundary, innerOffset), // coverage:ignore-line
+            innerContext.paintChild(
+                boundary, innerOffset), // coverage:ignore-line
       );
     }
   }

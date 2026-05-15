@@ -172,8 +172,7 @@ class _ExamplePageState extends State<ExamplePage> {
               onChanged: (v) => setState(() => _enable = v),
             ),
             ListTile(
-              title:
-                  Text('Grey opacity: ${_greyOpacity.toStringAsFixed(2)}'),
+              title: Text('Grey opacity: ${_greyOpacity.toStringAsFixed(2)}'),
               subtitle: Slider(
                 value: _greyOpacity,
                 onChanged: (v) => setState(() => _greyOpacity = v),
