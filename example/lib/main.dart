@@ -31,14 +31,24 @@ class ExamplePage extends StatefulWidget {
 class _ExamplePageState extends State<ExamplePage> {
   bool _enable = true;
   double _greyOpacity = 1.0;
+  double _blurSigma = 0.0;
   double _overlayOpacity = 0.35;
   Color _overlayColor = Colors.black;
+
+  UnveiledBlurMode _priceBadgeBlurMode = UnveiledBlurMode.none;
+  UnveiledBlurMode _buttonBlurMode = UnveiledBlurMode.none;
 
   static const Map<String, Color> _overlayColors = {
     'Black': Colors.black,
     'Amber': Colors.orange,
     'Blue': Color(0xFF1A237E),
     'Red': Colors.red,
+  };
+
+  static const Map<String, UnveiledBlurMode> _blurModes = {
+    'None': UnveiledBlurMode.none,
+    'Inherit': UnveiledBlurMode.inherit,
+    'Custom (1.5)': UnveiledBlurMode.custom(sigma: 1.5),
   };
 
   @override
@@ -54,6 +64,7 @@ class _ExamplePageState extends State<ExamplePage> {
             Veil(
               enable: _enable,
               greyOpacity: _greyOpacity,
+              blurSigma: _blurSigma,
               overlayOpacity: _overlayOpacity,
               overlayColor: _overlayColor,
               child: Card(
@@ -62,7 +73,6 @@ class _ExamplePageState extends State<ExamplePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Coloured banner — veiled
                       Container(
                         height: 120,
                         decoration: BoxDecoration(
@@ -96,7 +106,6 @@ class _ExamplePageState extends State<ExamplePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Veiled — greyscale + dimmed
                           const Text(
                             'Was \$299',
                             style: TextStyle(
@@ -104,8 +113,9 @@ class _ExamplePageState extends State<ExamplePage> {
                               color: Colors.grey,
                             ),
                           ),
-                          // Unveiled — full colour, not dimmed
+                          // Unveiled — blur mode controlled by UI
                           Unveiled(
+                            blurMode: _priceBadgeBlurMode,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -127,8 +137,9 @@ class _ExamplePageState extends State<ExamplePage> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Unveiled button — full colour, not dimmed
+                      // Unveiled — blur mode controlled by UI
                       Unveiled(
+                        blurMode: _buttonBlurMode,
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -149,32 +160,43 @@ class _ExamplePageState extends State<ExamplePage> {
 
             const SizedBox(height: 32),
 
-            // ── Controls ───────────────────────────────────────────────────
+            // ── Veil controls ──────────────────────────────────────────────
+            const Text(
+              'Veil controls',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
             SwitchListTile(
               title: const Text('Enable veil'),
               value: _enable,
               onChanged: (v) => setState(() => _enable = v),
             ),
             ListTile(
-              title: Text(
-                'Grey opacity: ${_greyOpacity.toStringAsFixed(2)}',
-              ),
+              title:
+                  Text('Grey opacity: ${_greyOpacity.toStringAsFixed(2)}'),
               subtitle: Slider(
                 value: _greyOpacity,
                 onChanged: (v) => setState(() => _greyOpacity = v),
               ),
             ),
             ListTile(
-              title: Text(
-                'Overlay opacity: ${_overlayOpacity.toStringAsFixed(2)}',
+              title: Text('Blur sigma: ${_blurSigma.toStringAsFixed(1)}'),
+              subtitle: Slider(
+                value: _blurSigma,
+                max: 20.0,
+                onChanged: (v) => setState(() => _blurSigma = v),
               ),
+            ),
+            ListTile(
+              title: Text(
+                  'Overlay opacity: ${_overlayOpacity.toStringAsFixed(2)}'),
               subtitle: Slider(
                 value: _overlayOpacity,
                 onChanged: (v) => setState(() => _overlayOpacity = v),
               ),
             ),
             const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Text('Overlay colour:'),
             ),
             Padding(
@@ -187,15 +209,71 @@ class _ExamplePageState extends State<ExamplePage> {
                     label: Text(entry.key),
                     selected: selected,
                     selectedColor: entry.value,
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : null,
-                    ),
+                    labelStyle:
+                        TextStyle(color: selected ? Colors.white : null),
                     onSelected: (_) =>
                         setState(() => _overlayColor = entry.value),
                   );
                 }).toList(),
               ),
             ),
+
+            const SizedBox(height: 24),
+
+            // ── Unveiled blur mode controls ─────────────────────────────
+            const Text(
+              'Unveiled blur mode',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Controls blur on each Unveiled child independently.',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Text('Price badge:'),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 8,
+                children: _blurModes.entries.map((entry) {
+                  final selected = _priceBadgeBlurMode == entry.value;
+                  return ChoiceChip(
+                    label: Text(entry.key),
+                    selected: selected,
+                    onSelected: (_) =>
+                        setState(() => _priceBadgeBlurMode = entry.value),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Text('Add to Cart button:'),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 8,
+                children: _blurModes.entries.map((entry) {
+                  final selected = _buttonBlurMode == entry.value;
+                  return ChoiceChip(
+                    label: Text(entry.key),
+                    selected: selected,
+                    onSelected: (_) =>
+                        setState(() => _buttonBlurMode = entry.value),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 32),
           ],
         ),
       ),

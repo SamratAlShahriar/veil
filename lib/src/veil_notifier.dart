@@ -2,15 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
-import 'package:veil/veil.dart';
 
-/// Tracks the set of [RenderRepaintBoundary] objects belonging to [Unveiled]
-/// descendants of a single [Veil] widget.
+/// Tracks the set of [RenderRepaintBoundary] objects belonging to `Unveiled`
+/// descendants of a single `Veil` widget.
 ///
-/// Notifications are batched via a microtask so that N [Unveiled] widgets
+/// Notifications are batched via a microtask so that N `Unveiled` widgets
 /// mounting in the same frame trigger only one `markNeedsPaint` call instead
 /// of N separate repaints.
-@internal
 class VeilNotifier extends ChangeNotifier {
   /// The live set of opted-out repaint boundaries.
   final Set<RenderRepaintBoundary> boundaries = {};

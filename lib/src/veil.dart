@@ -1,37 +1,41 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:veil/src/render_veil.dart';
-import 'package:veil/src/veil_notifier.dart';
-import 'package:veil/src/veil_scope.dart';
 
-/// Applies an animated greyscale and optional colour overlay effect to [child].
+import 'render_veil.dart';
+import 'veil_notifier.dart';
+import 'veil_scope.dart';
+
+/// Applies an animated greyscale, blur, and optional colour overlay effect
+/// to [child].
 ///
-/// Any descendant wrapped in `Unveiled` remains full-colour and is unaffected
-/// by the overlay — even while the effect is animating.
+/// Any descendant wrapped in `Unveiled` remains full-colour and unaffected
+/// by the overlay. Blur behaviour per `Unveiled` child is controlled via
+/// `UnveiledBlurMode`.
 ///
 /// ### How it works
 ///
 /// Internally uses `RenderVeil` — a custom [RenderObject] that:
 /// 1. Paints the entire subtree through a `ColorFilterLayer` (greyscale).
-/// 2. Paints an `OpacityLayer` tinted with [overlayColor] on top.
-/// 3. Re-paints each `Unveiled` child on top of both layers — unfiltered
+/// 2. Applies a `BackdropFilterLayer` (gaussian blur) on top.
+/// 3. Paints an `OpacityLayer` tinted with [overlayColor] on top.
+/// 4. Re-paints each `Unveiled` child on top of all layers — unfiltered
 ///    and undimmed — using its cached [RenderRepaintBoundary].
 ///
 /// All compositing uses Flutter's own primitives (`pushColorFilter`,
-/// `pushOpacity`, `pushClipRect`) rather than raw `canvas.saveLayer` /
-/// `canvas.restore`, making it immune to the _"native peer collected"_ crash
-/// that occurs when a child [RepaintBoundary] is composited mid-paint.
+/// `pushOpacity`, `pushClipRect`, `pushLayer`) rather than raw
+/// `canvas.saveLayer` / `canvas.restore`, making it immune to the
+/// _"native peer collected"_ crash that occurs when a child
+/// [RepaintBoundary] is composited mid-paint.
 ///
 /// ### Performance
 ///
-/// - The [ColorFilter] and overlay [Paint] are cached and only rebuilt when
-///   their inputs actually change — zero heap allocations per animation frame
-///   at steady state.
+/// - `ColorFilter`, `ImageFilter`, and overlay `Paint` are cached and only
+///   rebuilt when their inputs actually change — zero heap allocations per
+///   animation frame at steady state.
 /// - The greyscale colour matrix is pre-allocated and written in-place.
 /// - `isRepaintBoundary` is permanently `true` to satisfy Flutter's
-///   `PipelineOwner.flushPaint` invariant — toggling it dynamically causes an
-///   assertion failure when the animation crosses zero mid-frame.
+///   `PipelineOwner.flushPaint` invariant.
 ///
 /// ### Example
 ///
@@ -39,19 +43,21 @@ import 'package:veil/src/veil_scope.dart';
 /// Veil(
 ///   enable: isSoldOut,
 ///   greyOpacity: 1.0,
+///   blurSigma: 4.0,
 ///   overlayOpacity: 0.35,
 ///   overlayColor: Colors.black,
 ///   duration: Duration(milliseconds: 400),
 ///   child: ProductCard(
 ///     child: Column(
 ///       children: [
-///         ProductImage(),     // greyscale + dimmed
-///         ProductTitle(),     // greyscale + dimmed
-///         Unveiled(           // full colour, not dimmed
+///         ProductImage(),                              // greyscale + blur + dimmed
+///         Unveiled(                                   // sharp, full colour, not dimmed
+///           blurMode: UnveiledBlurMode.none,
 ///           child: PriceTag(),
 ///         ),
-///         Unveiled(           // full colour, not dimmed
-///           child: AddToCartButton(),
+///         Unveiled(                                   // custom blur, full colour
+///           blurMode: UnveiledBlurMode.custom(sigma: 1.5),
+///           child: StatusBadge(),
 ///         ),
 ///       ],
 ///     ),
@@ -61,12 +67,14 @@ import 'package:veil/src/veil_scope.dart';
 class Veil extends StatefulWidget {
   /// Creates a [Veil].
   ///
-  /// Both [greyOpacity] and [overlayOpacity] must be between `0.0` and `1.0`.
+  /// [greyOpacity] and [overlayOpacity] must be between `0.0` and `1.0`.
+  /// [blurSigma] must be >= `0.0`.
   const Veil({
     super.key,
     required this.child,
     this.enable = true,
     this.greyOpacity = 1.0,
+    this.blurSigma = 0.0,
     this.overlayOpacity = 0.0,
     this.overlayColor = const Color(0xFF000000),
     this.duration = const Duration(milliseconds: 350),
@@ -78,6 +86,10 @@ class Veil extends StatefulWidget {
         assert(
           overlayOpacity >= 0.0 && overlayOpacity <= 1.0,
           'overlayOpacity must be between 0.0 and 1.0',
+        ),
+        assert(
+          blurSigma >= 0.0,
+          'blurSigma must be >= 0.0',
         );
 
   /// The widget subtree to apply the veil effect to.
@@ -91,29 +103,28 @@ class Veil extends StatefulWidget {
   /// Greyscale intensity when [enable] is `true`.
   ///
   /// `1.0` = fully greyscale (default), `0.0` = original colours retained.
-  ///
   /// Uses ITU-R BT.709 luminance coefficients for perceptually accurate
-  /// greyscale conversion matching the sRGB colour space.
+  /// greyscale conversion.
   final double greyOpacity;
 
-  /// Opacity of the colour overlay painted on top of the greyscale effect.
+  /// Gaussian blur sigma applied over the greyscale when [enable] is `true`.
+  ///
+  /// `0.0` = no blur (default). Higher values = stronger blur.
+  /// Animates from `0.0` to [blurSigma] in sync with [greyOpacity].
+  ///
+  /// Per-child blur behaviour is controlled via `Unveiled.blurMode`.
+  final double blurSigma;
+
+  /// Opacity of the colour overlay painted on top of greyscale and blur.
   ///
   /// `0.0` = no overlay (default), `1.0` = fully opaque.
-  ///
-  /// The overlay colour is set via [overlayColor]. `Unveiled` children are
-  /// **not** affected by the overlay.
+  /// `Unveiled` children are **not** affected by the overlay.
   final double overlayOpacity;
 
   /// Colour of the overlay tint. Defaults to opaque black.
   ///
-  /// The alpha channel of this [Color] is intentionally ignored — overlay
-  /// transparency is controlled exclusively by [overlayOpacity], keeping
-  /// the two concerns orthogonal and predictable.
-  ///
-  /// Common values:
-  /// - `Colors.black` — classic dim / disabled look (default)
-  /// - `Colors.orange` — warm "out of season" tint
-  /// - `Color(0xFF1A237E)` — cool "coming soon" blue tint
+  /// The alpha channel is intentionally ignored — transparency is controlled
+  /// exclusively by [overlayOpacity].
   final Color overlayColor;
 
   /// Duration of the enable / disable transition animation.
@@ -130,6 +141,7 @@ class Veil extends StatefulWidget {
     super.debugFillProperties(properties);
     properties.add(DiagnosticsProperty<bool>('enable', enable));
     properties.add(DoubleProperty('greyOpacity', greyOpacity));
+    properties.add(DoubleProperty('blurSigma', blurSigma));
     properties.add(DoubleProperty('overlayOpacity', overlayOpacity));
     properties.add(ColorProperty('overlayColor', overlayColor));
     properties.add(DiagnosticsProperty<Duration>('duration', duration));
@@ -142,8 +154,7 @@ class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
   late Animation<double> _animation;
   final VeilNotifier _notifier = VeilNotifier();
 
-  // Cached opaque overlay colour — recomputed only when overlayColor changes,
-  // not on every build() call during animation (60+ times per second).
+  // Cached opaque overlay colour — recomputed only when overlayColor changes.
   late Color _opaqueOverlayColor;
 
   @override
@@ -161,7 +172,6 @@ class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
   @override
   void didUpdateWidget(Veil old) {
     super.didUpdateWidget(old);
-
     if (old.duration != widget.duration) {
       _controller.duration = widget.duration;
     }
@@ -183,20 +193,22 @@ class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  /// Strips the alpha from [color] so overlay transparency is driven solely
-  /// by `overlayOpacity`, keeping both concerns orthogonal.
+  /// Strips alpha so overlay transparency is driven solely by `overlayOpacity`.
   static Color _toOpaque(Color color) => color.withAlpha(255);
 
   @override
   Widget build(BuildContext context) {
     return VeilScope(
       notifier: _notifier,
+      // Pass animated blur sigma so Unveiled children can read it.
+      blurSigma: _animation.value * widget.blurSigma,
       child: AnimatedBuilder(
         animation: _animation,
         // Hoist child so the subtree is not rebuilt on every animation tick.
         child: widget.child,
         builder: (_, child) => _VeilRenderObjectWidget(
           greyAmount: _animation.value * widget.greyOpacity,
+          blurAmount: _animation.value * widget.blurSigma,
           overlayAmount: _animation.value * widget.overlayOpacity,
           overlayColor: _opaqueOverlayColor,
           notifier: _notifier,
@@ -209,14 +221,12 @@ class _VeilState extends State<Veil> with SingleTickerProviderStateMixin {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERNAL: _VeilRenderObjectWidget
-//
-// Bridges the widget tree and `RenderVeil`. Passes updated properties to the
-// render object via [updateRenderObject] without triggering a widget rebuild.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _VeilRenderObjectWidget extends SingleChildRenderObjectWidget {
   const _VeilRenderObjectWidget({
     required this.greyAmount,
+    required this.blurAmount,
     required this.overlayAmount,
     required this.overlayColor,
     required this.notifier,
@@ -224,6 +234,7 @@ class _VeilRenderObjectWidget extends SingleChildRenderObjectWidget {
   });
 
   final double greyAmount;
+  final double blurAmount;
   final double overlayAmount;
   final Color overlayColor;
   final VeilNotifier notifier;
@@ -231,6 +242,7 @@ class _VeilRenderObjectWidget extends SingleChildRenderObjectWidget {
   @override
   RenderVeil createRenderObject(BuildContext context) => RenderVeil(
         greyAmount: greyAmount,
+        blurAmount: blurAmount,
         overlayAmount: overlayAmount,
         overlayColor: overlayColor,
         notifier: notifier,
@@ -240,6 +252,7 @@ class _VeilRenderObjectWidget extends SingleChildRenderObjectWidget {
   void updateRenderObject(BuildContext context, RenderVeil ro) {
     ro
       ..greyAmount = greyAmount
+      ..blurAmount = blurAmount
       ..overlayAmount = overlayAmount
       ..overlayColor = overlayColor
       ..notifier = notifier;

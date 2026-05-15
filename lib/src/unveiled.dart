@@ -1,31 +1,33 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:veil/src/render_veil.dart';
-import 'package:veil/veil.dart';
 
+import 'unveiled_blur_mode.dart';
 import 'veil_notifier.dart';
 import 'veil_scope.dart';
 
-/// Exempts [child] from all visual effects applied by an ancestor [Veil].
+/// Exempts [child] from all visual effects applied by an ancestor `Veil`.
 ///
-/// Wrap any widget inside a [Veil] with [Unveiled] to keep it rendering in
-/// full colour, unaffected by both the greyscale filter and the colour overlay
-/// — even while the [Veil] is animating.
+/// Wrap any widget inside a `Veil` with [Unveiled] to keep it rendering in
+/// full colour and unaffected by the colour overlay. Blur behaviour is
+/// controlled separately via [UnveiledBlurMode].
 ///
 /// Multiple [Unveiled] widgets at any depth in the subtree are supported.
-/// They do not need to be direct children of [Veil].
+/// They do not need to be direct children of `Veil`.
 ///
-/// ### How it works
+/// ### Blur control
 ///
-/// [Unveiled] places [child] inside a [RepaintBoundary] and registers that
-/// boundary's [RenderRepaintBoundary] with the nearest [VeilNotifier]
-/// (provided by [VeilScope]). The [RenderVeil] paint pipeline then re-paints
-/// each registered boundary on top of the greyscale and overlay layers —
-/// unfiltered and undimmed.
+/// When the parent `Veil` has `blurSigma` set, use [blurMode] to
+/// control how this specific child handles blur:
+///
+/// - [UnveiledBlurMode.none] — completely sharp, no blur applied
+/// - [UnveiledBlurMode.inherit] — uses parent `Veil`'s sigma (default)
+/// - [UnveiledBlurMode.custom] — custom sigma independent of parent
 ///
 /// ### Behaviour outside a Veil
 ///
-/// If [Unveiled] is used outside a [Veil], it has no effect and simply
+/// If [Unveiled] is used outside a `Veil`, it has no effect and simply
 /// renders [child] normally. No errors are thrown.
 ///
 /// ### Example
@@ -34,17 +36,19 @@ import 'veil_scope.dart';
 /// Veil(
 ///   enable: isDisabled,
 ///   greyOpacity: 1.0,
+///   blurSigma: 4.0,
 ///   overlayOpacity: 0.3,
 ///   child: Card(
 ///     child: Column(
 ///       children: [
-///         ProductImage(),     // greyscale + dimmed
-///         ProductTitle(),     // greyscale + dimmed
-///         Unveiled(           // full colour, not dimmed
-///           child: ElevatedButton(
-///             onPressed: () {},
-///             child: Text('Buy Now'),
-///           ),
+///         ProductImage(),
+///         Unveiled(
+///           blurMode: UnveiledBlurMode.none,
+///           child: PriceTag(),
+///         ),
+///         Unveiled(
+///           blurMode: UnveiledBlurMode.custom(sigma: 1.5),
+///           child: StatusBadge(),
 ///         ),
 ///       ],
 ///     ),
@@ -53,10 +57,23 @@ import 'veil_scope.dart';
 /// ```
 class Unveiled extends StatefulWidget {
   /// Creates an [Unveiled] widget.
-  const Unveiled({super.key, required this.child});
+  ///
+  /// [blurMode] defaults to [UnveiledBlurMode.inherit] — the child inherits
+  /// the parent `Veil`'s blur sigma.
+  const Unveiled({
+    super.key,
+    required this.child,
+    this.blurMode = UnveiledBlurMode.inherit,
+  });
 
-  /// The widget to exempt from [Veil] effects.
+  /// The widget to exempt from `Veil` greyscale and overlay effects.
   final Widget child;
+
+  /// Controls how blur is applied to this child when the parent `Veil`
+  /// has `blurSigma` set.
+  ///
+  /// Defaults to [UnveiledBlurMode.inherit] — uses the parent `Veil`'s sigma.
+  final UnveiledBlurMode blurMode;
 
   @override
   State<Unveiled> createState() => _UnveiledState();
@@ -73,7 +90,7 @@ class _UnveiledState extends State<Unveiled> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final newNotifier = VeilScope.of(context);
+    final newNotifier = VeilScope.notifierOf(context);
     if (newNotifier != _notifier) {
       _unregister();
       _notifier = newNotifier;
@@ -109,8 +126,38 @@ class _UnveiledState extends State<Unveiled> {
     super.dispose();
   }
 
+  /// Resolves the effective blur sigma for this child based on `blurMode`.
+  double _resolvedSigma(BuildContext context) {
+    final mode = widget.blurMode;
+    if (mode == UnveiledBlurMode.none) return 0.0;
+    if (mode == UnveiledBlurMode.inherit) {
+      return VeilScope.blurSigmaOf(context);
+    }
+    if (mode is UnveiledBlurCustomMode) return mode.sigma;
+    return 0.0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(key: _key, child: widget.child);
+    final sigma = _resolvedSigma(context);
+
+    // If no blur needed — plain RepaintBoundary for greyscale/overlay opt-out.
+    if (sigma <= 0.0) {
+      return RepaintBoundary(key: _key, child: widget.child);
+    }
+
+    // Apply blur to this specific Unveiled child using ImageFiltered.
+    // The RepaintBoundary is still needed for greyscale/overlay opt-out.
+    return RepaintBoundary(
+      key: _key,
+      child: ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(
+          sigmaX: sigma,
+          sigmaY: sigma,
+          tileMode: TileMode.decal,
+        ),
+        child: widget.child,
+      ),
+    );
   }
 }

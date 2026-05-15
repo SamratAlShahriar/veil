@@ -2,50 +2,50 @@ import 'dart:ui';
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:veil/veil.dart';
 
 import 'veil_notifier.dart';
 
-/// The core [RenderObject] that applies the greyscale filter, colour overlay,
-/// and [Unveiled] child overdraw for a [Veil] widget.
+/// The core [RenderObject] that applies the greyscale filter, blur,
+/// colour overlay, and `Unveiled` child overdraw for a `Veil` widget.
 ///
-/// ### Paint pipeline (3 steps)
+/// ### Paint pipeline (4 steps)
 ///
 /// 1. **Greyscale** — the entire subtree is composited through a
-///    [ColorFilterLayer] built from the ITU-R BT.709 luminance matrix,
+///    `ColorFilterLayer` built from the ITU-R BT.709 luminance matrix,
 ///    lerped by [greyAmount].
-/// 2. **Overlay** — a solid [overlayColor] rect is painted at [overlayAmount]
-///    opacity via an [OpacityLayer].
-/// 3. **Unveiled overdraw** — each [RenderRepaintBoundary] registered in
-///    [notifier] is re-painted on top of both layers, unfiltered and undimmed,
+/// 2. **Blur** — a `BackdropFilterLayer` applies gaussian blur at [blurAmount]
+///    sigma over the greyscale result.
+/// 3. **Overlay** — a solid [overlayColor] rect is painted at [overlayAmount]
+///    opacity via an `OpacityLayer`.
+/// 4. **Unveiled overdraw** — each [RenderRepaintBoundary] registered in
+///    [notifier] is re-painted on top of all layers, unfiltered and undimmed,
 ///    clipped to its own bounds via `pushClipRect`.
 ///
 /// ### Why `pushColorFilter` / `pushOpacity` / `pushClipRect`?
 ///
 /// Raw `canvas.saveLayer` / `canvas.restore` crashes with
 /// _"native peer has been collected"_ when a child [RepaintBoundary] is
-/// composited mid-paint — Flutter's `_compositeChild` finalises the current
-/// `Picture` and disposes the underlying native canvas, invalidating any
-/// local `canvas` reference. Flutter's compositing primitives always supply
+/// composited mid-paint. Flutter's compositing primitives always supply
 /// a fresh, valid `PaintingContext` into their callbacks and are immune to
 /// this race condition.
 ///
 /// ### Why `isRepaintBoundary` is always `true`
 ///
-/// Toggling it based on runtime state (e.g. `greyAmount > 0`) causes
-/// Flutter's `PipelineOwner.flushPaint` to fire the assertion
-/// `'node.isRepaintBoundary': is not true` when the animation crosses zero
-/// after the node was already queued as a repaint boundary. Keeping it
-/// permanently `true` is safe — [paint]'s fast path handles the zero-effect
-/// case with negligible overhead.
+/// Toggling it based on runtime state causes Flutter's
+/// `PipelineOwner.flushPaint` to assert `'node.isRepaintBoundary': is not true`
+/// when the animation crosses zero after the node was already queued as a
+/// repaint boundary. Keeping it permanently `true` is safe — [paint]'s fast
+/// path handles the zero-effect case with negligible overhead.
 class RenderVeil extends RenderProxyBox {
   /// Creates a [RenderVeil].
   RenderVeil({
     required double greyAmount,
+    required double blurAmount,
     required double overlayAmount,
     required Color overlayColor,
     required VeilNotifier notifier,
   })  : _greyAmount = greyAmount,
+        _blurAmount = blurAmount,
         _overlayAmount = overlayAmount,
         _overlayColor = overlayColor,
         _notifier = notifier {
@@ -53,83 +53,51 @@ class RenderVeil extends RenderProxyBox {
   }
 
   // ── BT.709 luminance colour matrices ─────────────────────────────────────
-  // ITU-R BT.709 coefficients (R=0.2126, G=0.7152, B=0.0722) provide
-  // perceptually accurate greyscale matching the sRGB colour space.
 
   static const List<double> _kGreyMatrix = [
-    0.2126,
-    0.7152,
-    0.0722,
-    0,
-    0,
-    0.2126,
-    0.7152,
-    0.0722,
-    0,
-    0,
-    0.2126,
-    0.7152,
-    0.0722,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0,      0,      0,      1, 0,
   ];
 
   static const List<double> _kIdentityMatrix = [
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
-    0,
-    0,
-    0,
-    0,
-    1,
-    0,
+    1, 0, 0, 0, 0,
+    0, 1, 0, 0, 0,
+    0, 0, 1, 0, 0,
+    0, 0, 0, 1, 0,
   ];
 
   // ── Precision thresholds ──────────────────────────────────────────────────
 
-  /// Below this value the greyscale filter is skipped entirely, guaranteeing
-  /// pixel-perfect original colours with no floating-point drift from a
-  /// near-identity matrix.
+  /// Below this value the greyscale filter is skipped entirely.
   static const double _kEffectivelyZero = 0.001;
 
-  /// At or above this value the exact const [_kGreyMatrix] is used rather
-  /// than a lerped matrix, avoiding floating-point drift at full greyscale.
+  /// At or above this value the exact const [_kGreyMatrix] is used.
   static const double _kEffectivelyOne = 0.999;
 
   // ── Zero-allocation caches ────────────────────────────────────────────────
 
   /// Pre-allocated 20-element buffer written in-place by [_lerpMatrix].
-  /// Reused every animation frame — zero heap allocations.
   final List<double> _matrixBuffer = List<double>.filled(20, 0);
 
-  /// Cached [ColorFilter]. Rebuilt only when [greyAmount] changes.
+  /// Cached [ColorFilter] — rebuilt only when [greyAmount] changes.
   ColorFilter? _cachedColorFilter;
 
-  /// The [greyAmount] value at which [_cachedColorFilter] was last built.
+  /// The [greyAmount] at which [_cachedColorFilter] was last built.
   double _cachedColorFilterAmount = -1;
 
-  /// Cached overlay [Paint]. Rebuilt only when [overlayColor] changes.
-  late Paint _overlayPaint = Paint()
-    ..color = _overlayColor; // coverage:ignore-line
+  /// Cached [ImageFilter] for blur — rebuilt only when [blurAmount] changes.
+  ImageFilter? _cachedBlurFilter;
+
+  /// The [blurAmount] at which [_cachedBlurFilter] was last built.
+  double _cachedBlurAmount = -1;
+
+  /// Cached overlay [Paint] — rebuilt only when [overlayColor] changes.
+  late Paint _overlayPaint = Paint()..color = _overlayColor; // coverage:ignore-line
 
   // ── greyAmount ────────────────────────────────────────────────────────────
+
   double _greyAmount; // coverage:ignore-line
 
   /// Current greyscale intensity in `[0.0, 1.0]`.
@@ -141,7 +109,21 @@ class RenderVeil extends RenderProxyBox {
     markNeedsPaint();
   }
 
+  // ── blurAmount ────────────────────────────────────────────────────────────
+
+  double _blurAmount;
+
+  /// Current blur sigma. `0.0` = no blur.
+  double get blurAmount => _blurAmount; // coverage:ignore-line
+
+  set blurAmount(double v) {
+    if (_blurAmount == v) return;
+    _blurAmount = v;
+    markNeedsPaint();
+  }
+
   // ── overlayAmount ─────────────────────────────────────────────────────────
+
   double _overlayAmount;
 
   /// Current overlay opacity in `[0.0, 1.0]`.
@@ -154,9 +136,10 @@ class RenderVeil extends RenderProxyBox {
   }
 
   // ── overlayColor ──────────────────────────────────────────────────────────
+
   Color _overlayColor;
 
-  /// Opaque overlay colour (alpha is always 255; opacity is [overlayAmount]).
+  /// Opaque overlay colour (alpha always 255; opacity via [overlayAmount]).
   Color get overlayColor => _overlayColor; // coverage:ignore-line
 
   set overlayColor(Color v) {
@@ -170,10 +153,9 @@ class RenderVeil extends RenderProxyBox {
 
   VeilNotifier _notifier;
 
-  /// The notifier tracking [Unveiled] [RenderRepaintBoundary] descendants.
+  /// The notifier tracking `Unveiled` [RenderRepaintBoundary] descendants.
   VeilNotifier get notifier => _notifier; // coverage:ignore-line
 
-  // notifier setter — same instance always passed in practice
   set notifier(VeilNotifier v) {
     if (_notifier == v) return; // coverage:ignore-line
     _notifier.removeListener(markNeedsPaint); // coverage:ignore-line
@@ -189,20 +171,15 @@ class RenderVeil extends RenderProxyBox {
 
   // ── Compositing flags ─────────────────────────────────────────────────────
 
-  // isRepaintBoundary — always true, branch never false
   @override
   bool get isRepaintBoundary => true; // coverage:ignore-line
 
   @override
   bool get alwaysNeedsCompositing => true; // coverage:ignore-line
 
-  // ── Matrix / filter helpers ───────────────────────────────────────────────
+  // ── Filter helpers ────────────────────────────────────────────────────────
 
-  /// Returns a cached [ColorFilter] for [t], or `null` when [t] is
-  /// negligibly small (fast path — no filter applied).
-  ///
-  /// The cache means no [ColorFilter] allocation occurs on frames where only
-  /// [overlayAmount] is changing (e.g. overlay-only animation).
+  /// Returns a cached [ColorFilter] for [t], or `null` when negligible.
   ColorFilter? _getColorFilter(double t) {
     if (t <= _kEffectivelyZero) return null;
     if (_cachedColorFilter != null &&
@@ -215,8 +192,23 @@ class RenderVeil extends RenderProxyBox {
     return _cachedColorFilter;
   }
 
-  /// Lerps between [_kIdentityMatrix] and [_kGreyMatrix] into [_matrixBuffer]
-  /// in-place and returns the buffer (zero allocation).
+  /// Returns a cached [ImageFilter] for blur [sigma], or `null` when negligible.
+  ImageFilter? _getBlurFilter(double sigma) {
+    if (sigma <= _kEffectivelyZero) return null;
+    if (_cachedBlurFilter != null &&
+        (sigma - _cachedBlurAmount).abs() < 0.0001) {
+      return _cachedBlurFilter;
+    }
+    _cachedBlurFilter = ImageFilter.blur(
+      sigmaX: sigma,
+      sigmaY: sigma,
+      tileMode: TileMode.decal,
+    );
+    _cachedBlurAmount = sigma;
+    return _cachedBlurFilter;
+  }
+
+  /// Lerps between [_kIdentityMatrix] and [_kGreyMatrix] in-place.
   List<double> _lerpMatrix(double t) {
     for (var i = 0; i < 20; i++) {
       _matrixBuffer[i] = lerpDouble(_kIdentityMatrix[i], _kGreyMatrix[i], t)!;
@@ -225,17 +217,17 @@ class RenderVeil extends RenderProxyBox {
   }
 
   // ── paint ─────────────────────────────────────────────────────────────────
+
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child == null) return;
 
     final colorFilter = _getColorFilter(_greyAmount);
+    final blurFilter = _getBlurFilter(_blurAmount);
     final hasOverlay = _overlayAmount > _kEffectivelyZero;
 
-    // Fast path — both effects negligible, delegate to RenderProxyBox.
-    // Zero compositing overhead; the permanent repaint boundary costs nothing
-    // because Flutter only repaints on explicit markNeedsPaint() calls.
-    if (colorFilter == null && !hasOverlay) {
+    // Fast path — all effects negligible, paint normally with zero overhead.
+    if (colorFilter == null && blurFilter == null && !hasOverlay) {
       super.paint(context, offset);
       return;
     }
@@ -255,21 +247,40 @@ class RenderVeil extends RenderProxyBox {
       context.paintChild(child!, offset);
     }
 
-    // ── Step 2: Colour overlay via OpacityLayer ───────────────────────────
-    // [Unveiled] children are painted on top in Step 3 and are therefore
-    // unaffected by this overlay.
+    // ── Step 2: Blur via BackdropFilterLayer ──────────────────────────────
+    // Applied on top of the greyscale result. Unveiled children with
+    // UnveiledBlurMode.none are painted unblurred in Step 4.
+    if (blurFilter != null) {
+      context.pushLayer(
+        BackdropFilterLayer(filter: blurFilter),
+        (innerContext, innerOffset) {
+          // Paint a transparent rect to trigger the backdrop filter.
+          // The filter samples the already-painted greyscale pixels below.
+          innerContext.canvas.drawRect(
+            innerOffset & size,
+            Paint()..color = const Color(0x00000000),
+          );
+        },
+        offset,
+      );
+    }
+
+    // ── Step 3: Colour overlay via OpacityLayer ───────────────────────────
     if (hasOverlay) {
       final alpha = (_overlayAmount * 255).round().clamp(0, 255);
       context.pushOpacity(
         offset,
         alpha,
         (innerContext, innerOffset) => innerContext.canvas.drawRect(
-            (innerOffset & size).intersect(innerContext.estimatedBounds),
-            _overlayPaint),
+          (innerOffset & size).intersect(innerContext.estimatedBounds),
+          _overlayPaint,
+        ),
       );
     }
 
-    // ── Step 3: Overdraw Unveiled boundaries — unfiltered and undimmed ────
+    // ── Step 4: Overdraw Unveiled boundaries — unfiltered and undimmed ────
+    // Each Unveiled child is re-painted on top of all effects.
+    // Its internal blur (if any) is self-contained via ImageFiltered widget.
     if (optOuts.isEmpty) return;
 
     for (final boundary in optOuts) {
@@ -288,18 +299,15 @@ class RenderVeil extends RenderProxyBox {
           MatrixUtils.transformPoint(transform, Offset.zero) + offset;
       final boundaryRect = boundaryOffset & boundary.size;
 
-      // Guard 3: skip if drifted outside our bounds — occurs transiently
-      // during scroll as layout and paint phases catch up to each other.
+      // Guard 3: skip if drifted outside our bounds.
       if (!myBounds.overlaps(boundaryRect)) continue; // coverage:ignore-line
 
-      context.pushClipRect(
-        // coverage:ignore-line
+      context.pushClipRect( // coverage:ignore-line
         needsCompositing, // coverage:ignore-line
         boundaryOffset, // coverage:ignore-line
         Offset.zero & boundary.size, // coverage:ignore-line
         (innerContext, innerOffset) => // coverage:ignore-line
-            innerContext.paintChild(
-                boundary, innerOffset), // coverage:ignore-line
+            innerContext.paintChild(boundary, innerOffset), // coverage:ignore-line
       );
     }
   }
@@ -308,6 +316,7 @@ class RenderVeil extends RenderProxyBox {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DoubleProperty('greyAmount', greyAmount));
+    properties.add(DoubleProperty('blurAmount', blurAmount));
     properties.add(DoubleProperty('overlayAmount', overlayAmount));
     properties.add(ColorProperty('overlayColor', overlayColor));
     properties.add(IntProperty('unveiledCount', notifier.boundaries.length));
