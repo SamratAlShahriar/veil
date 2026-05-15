@@ -1,0 +1,5 @@
+# Any change to any file requires approval from @SamratAlShahriar
+* @SamratAlShahriar
+
+# Changes to sensitive config files require specific approval
+/config/ @SamratAlShahriar
